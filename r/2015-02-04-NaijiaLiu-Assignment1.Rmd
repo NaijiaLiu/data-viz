@@ -1,0 +1,73 @@
+---
+title: "2015-02-02-Naijia Liu-Assignment 1"
+author: "Naijia Liu"
+date: "2015-02-02"
+output: html_document
+---
+open the file "lgas.csv"
+```{r}
+file <- "/Users/NaijiaLiu/Downloads/nmis_dataset/lgas.csv"
+d <-read.csv(file)
+```
+Check the variable "zone" 
+```{r}
+summary(d$zone)
+```
+
+subtract all Northern states from the original dataset and show the summary of variable "zone" in the newset (all numbers of the Northern states are zero). 
+```{r}
+S1 <-subset(d, d$zone !="North-Central")
+S2 <-subset(S1, S1$zone !="Northeast")
+S3 <-subset(S2, S2$zone !="Northwest")
+summary(S3$zone)
+```
+
+open the file "Health_Mopup_and_Baseline_NMIS_Facility.csv"
+```{r}
+file <- "/Users/NaijiaLiu/Downloads/nmis_dataset/Health_Mopup_and_Baseline_NMIS_Facility.csv"
+dd <- read.csv(file)
+```
+
+Merge the two files by variable "unique_lga", which is the common variable for the two datasets.Then, order the new dataset according to population in a descending order.
+Due to the length of the dataset, only the first 100 rows are shown here.
+```{r}
+newset<-merge(S3,dd,by="unique_lga")
+newset.ordered <- newset[order(-newset$pop_2006),]
+S4 <- data.frame(newset.ordered$facility_name,newset.ordered$pop_2006)
+head(S4, n=100)
+summary(newset.ordered$state)
+```
+
+Aggregate the data by state, adding the numbers of nurses, doctors and midwives together. Then, aggreaget the data to get each state's population and total area in square kilometer.
+```{r}
+aggdata <-aggregate(newset.ordered$num_nurses_fulltime+newset.ordered$num_doctors_fulltime+newset.ordered$num_nursemidwives_fulltime ~ newset.ordered$state, data = newset.ordered, FUN=sum, na.rm=TRUE)
+
+aggdata2 <-aggregate(newset.ordered$pop_2006, by=list(newset.ordered$state), FUN=sum, na.rm=TRUE)
+aggdata3 <- aggregate(newset.ordered$area_sq_km, by = list(newset.ordered$state), FUN=sum, na.rm=TRUE)
+```
+
+Merge the three aggregated datasets as one, by "Group.1", which is the state's name. Rename the variables to make it clearer.
+```{r}
+library(reshape)
+names(aggdata) <- c("Group.1","total")
+aggdata<-merge(aggdata, aggdata2, by="Group.1")
+aggdata <- merge(aggdata, aggdata3, by ="Group.1")
+names(aggdata) <-c("state", "total", "population", "area_sqkm")
+list(aggdata)
+```
+
+Creating 2 new variables: numbers of doctors & nurses & midwives **per capita** and **per area**. Order the data frame according to the total amount of doctors & nurses & midwives in a **descending order**. Show the result.  
+```{r}
+aggdata <- transform(aggdata, percapita= total/population, perarea=total/area_sqkm)
+aggdata <- aggdata[order(-aggdata$total),]
+list(aggdata)
+```
+
+Save the new dataset. 
+```{r}
+write.csv(data,file="./newset_ordered.csv",row.names=FALSE)
+save(data,file="newset_ordered.Rdata")
+```
+
+
+
